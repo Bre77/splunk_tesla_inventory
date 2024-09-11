@@ -1,0 +1,128 @@
+<form version="1.1" theme="dark">
+  <label>Inventory</label>
+  <fieldset submitButton="false">
+    <input type="dropdown" token="market">
+      <label>Market</label>
+      <choice value="*">All</choice>
+      <fieldForLabel>Market</fieldForLabel>
+      <fieldForValue>Market</fieldForValue>
+      <search>
+        <query>| metadata type=sources sourcetype="tesla:inventory" | eval Market=mvindex(split(source,":"),0) | dedup Market | sort Market</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="model">
+      <label>Model</label>
+      <choice value="*">All</choice>
+      <choice value="ms">Model S</choice>
+      <choice value="m3">Model 3</choice>
+      <choice value="mx">Model X</choice>
+      <choice value="my">Model Y</choice>
+      <default>*</default>
+    </input>
+    <input type="checkbox" token="demo">
+      <label>Demo</label>
+      <choice value="IsDemo=true">Yes</choice>
+      <choice value="IsDemo=false">No</choice>
+      <default>IsDemo=true,IsDemo=false</default>
+      <prefix>(</prefix>
+      <suffix>)</suffix>
+      <delimiter> OR </delimiter>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <search>
+          <query>index=main sourcetype="tesla:inventory" source::$market$:$model$ $demo$
+| timechart dc(VIN) by TrimName span=1h</query>
+          <earliest>-3d@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="height">160</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <search>
+          <query>index=main sourcetype="tesla:inventory" source::$market$:$model$ $demo$
+| timechart dc(VIN) by MetroName minspan=1h span=1d</query>
+          <earliest>-3d@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="height">160</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Inventory</title>
+        <search>
+          <query>index=main sourcetype="tesla:inventory" source::$market$:$model$ $demo$ 
+| eval Location = MetroName." ".StateProvince
+| stats latest(_time) as _time latest(TrimName) as Trim latest(Location) as Location latest(AUTOPILOT{}) as Autopilot latest(demo) as Demo latest(interior) as Interior latest(PAINT{}) as Paint latest(wheels) as Wheels latest(Price) as Price latest(OnConfiguratorPricePercentage) as % by VIN 
+| reltime 
+| rename reltime as "Last Seen" 
+| sort - _time 
+| fields - VIN _time</query>
+          <earliest>-7d@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="number" field="Price">
+          <option name="unit">$</option>
+          <option name="unitPosition">before</option>
+        </format>
+        <format type="color" field="Paint">
+          <colorPalette type="map">{"WHITE":#FFFFFF,"GRAY":#65778A,"BLACK":#3C444D,"BLUE":#115BAD,"RED":#9E2520}</colorPalette>
+        </format>
+        <format type="color" field="Demo">
+          <colorPalette type="map">{"true":#D41F1F}</colorPalette>
+        </format>
+        <format type="color" field="Interior">
+          <colorPalette type="map">{"White":#FFFFFF,"Black":#3C444D}</colorPalette>
+        </format>
+        <format type="number" field="%">
+          <option name="precision">0</option>
+          <option name="unit">%</option>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <map>
+        <search>
+          <query>index=main sourcetype="tesla:inventory" source::$market$:$model$ VIN=* | eval geo=split(mvindex('geoPoints{}{}',0),","), lat = mvindex(geo,0), lon = mvindex(geo,1) | geostats dc(VIN) by TrimName locallimit=0</query>
+          <earliest>-7d@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="height">818</option>
+        <option name="mapping.map.center">(12.73,21.27)</option>
+        <option name="mapping.map.zoom">3</option>
+        <option name="mapping.markerLayer.markerMinSize">10</option>
+        <option name="mapping.type">marker</option>
+        <option name="refresh.display">progressbar</option>
+      </map>
+    </panel>
+  </row>
+</form>
